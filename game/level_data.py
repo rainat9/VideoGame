@@ -19,28 +19,39 @@ LEVELS: dict[int, dict] = {
             "count": 28,
             "types": [
                 "leaf",
-                "plastic_bag",
+                "can",
                 "water_bottle",
                 "electronics",
                 "chemical",
             ],
         },
+        "max_items": 7,                 # optional – default 5 if omitted
+        "flow_areas": [
+        {
+            "rect": [314, 313, 646, 162],   # x, y, width, height (covers the river band)
+            "vel": [50, 0]                  # horizontal drift speed (pixels per second)
+        },
+        {
+            "rect": [0, 301, 245, 172],   # x, y, width, height (covers the river band)
+            "vel": [50, 0]                  # horizontal drift speed (pixels per second)
+        }
+        ],
 # Item sprites spawned around the map (visible + collectible).
 # These MUST cover every kind listed in item_spawn["types"].
 "item_assets": {
     "leaf": "assets/leaves.png",
-    "plastic_bag": "assets/plastic_bags.png",
+    "can": "assets/can.png",
     "water_bottle": "assets/water_bottles.png",
     "electronics": "assets/electronics.png",
     "chemical": "assets/chemical.png",
 },
 # Bigger = easier to see.
 "item_sizes": {
-    "leaf": (52, 52),
-    "plastic_bag": (56, 56),
-    "water_bottle": (52, 52),
-    "electronics": (60, 60),
-    "chemical": (64, 64),
+    "leaf": (38, 38),
+    "can": (38, 38),
+    "water_bottle": (38, 38),
+    "electronics": (38, 38),
+    "chemical": (38, 38),
 },
 # Level intro popup (shown before play starts)
 "intro": {
@@ -53,20 +64,6 @@ LEVELS: dict[int, dict] = {
     "dismiss": "Press ENTER to start",
 },
 
-
-        # Static objects with assets (trees, rocks, etc.)
-        # Each line connects directly to an asset path in the folder.
-        # Format:
-        #   {"image": "assets/sprites/<your_forest_asset>.png", "rect": (x, y, w, h)}
-        # Rect sizes here are already doubled for clearer visibility.
-        "static_objects": [
-            {"image": "assets/leaves.png", "rect": (200, 130, 180, 120)},
-            {"image": "assets/plastic_bags.png", "rect": (420, 300, 220, 140)},
-            {"image": "assets/water_bottles.png", "rect": (680, 160, 240, 120)},
-            {"image": "assets/electronics.png", "rect": (840, 220, 200, 160)},
-            {"image": "assets/chemical.png", "rect": (1000, 280, 240, 200)},
-        ],
-
         # Trash floating down the river (can use a trash/log sprite).
         # Format:
         #   {"image": "assets/sprites/river_trash.png",
@@ -74,24 +71,16 @@ LEVELS: dict[int, dict] = {
         # MOVEMENT OF RIVER_TRASH HERE
         #   - Starts near (300, 430), moves horizontally between x=260 and x=700.
         # Rect here is also doubled in size for visibility.
-        "moving_objects": [
-            {
-                "image": "assets/trash.png",
-                "rect": (300, 430, 140, 80),
-                "vel": (140, 0),
-                "bounds": (260, 430, 700, 430),
-            },
-        ],
+       
 
         # Air-quality rules
         # Pickups: SPACE while touching item.
         "air_rules": {
             "pickup": {
                 "leaf": 1,
-                "plastic_bag": 3,
-                "water_bottle": 3,
-                "electronics": 5,
-                "chemical": 6,
+                "can": 2,
+                "water_bottle": 2,
+                "electronics": 3,
             },
             # Hazards applied while standing on the item.
             # Chemical containers reduce the air bar when stepped on.
@@ -99,6 +88,34 @@ LEVELS: dict[int, dict] = {
                 "chemical": -10,
             },
         },
+        "spawn_blocked_areas": [
+            [102, 1, 102, 64],
+            [30, 202, 80, 71],
+            [67, 486, 59, 46],
+            [282, 112, 53, 35],
+            [391, 154, 31, 24],
+            [501, 18, 55, 38],
+            [612, 146, 70, 53],
+            [762, 24, 36, 30],
+            [880, 45, 61, 40],
+            [433, 263, 47, 34],
+            [155, 193, 26, 13],
+            [251, 296, 60, 184], #bridge
+        ],
+        "player_collision": [
+        [102, 1, 102, 64],
+        [30, 202, 80, 71],
+        [67, 486, 59, 46],
+        [282, 112, 53, 35],
+        [391, 154, 31, 24],
+        [501, 18, 55, 38],
+        [612, 146, 70, 53],
+        [762, 24, 36, 30],
+        [880, 45, 61, 40],
+        [433, 263, 47, 34],
+        [155, 193, 26, 13],
+        # (bridge omitted)
+        ],
     },
 
     # ===== HERE IS LEVEL 2 (CITY) =====
@@ -117,30 +134,73 @@ LEVELS: dict[int, dict] = {
             "types": [
                 "water_bottle",
                 "cardboard_box",
-                "battery",
+                "batteries",
                 "electronics",
                 "food_waste",
                 "trash",
                 "chip_bag",
             ],
         },
+        "max_items": 7,                 # optional – default 5 if omitted
+        "spawn_interval": 1.5,          # optional – default 2.0 if omitted
+        "spawn_blocked_areas": [
+        # Prevent items from spawning in the middle of roads
+       # [200, 300, 600, 80],        # example horizontal road
+        #[500, 150, 80, 300],         # example vertical road
+        # Also block under moving cars if needed (though cars themselves are not items)
+        [64, 197, 226, 26],
+        [0, 213, 38, 99],
+        [88, 333, 51, 82],
+        [357, 352, 11, 68],
+        [350, 205, 22, 53],
+        [85, 250, 22, 12],
+        [156, 338, 180, 72], #playground
+        [227, 281, 93, 58], #playground
+        [552, 314, 145, 105],
+        [756, 323, 197, 90],
+        [567, 63, 123, 105],
+        [791, 72, 121, 90],
+        [478, 110, 27, 61],
+        [479, 360, 22, 64],
+        [488, 20, 34, 18],
+        [902, 0, 57, 80],
+        [768, 12, 19, 13],
+        ],
+        "player_collision": [
+        [64, 197, 226, 26],
+        [0, 213, 38, 99],
+        [88, 333, 51, 82],
+        [357, 352, 11, 68],
+        [350, 205, 22, 53],
+        [156, 338, 180, 72], #playground
+        [227, 281, 93, 58], #playground
+        [552, 314, 145, 105],
+        [756, 323, 197, 90],
+        [567, 63, 123, 105],
+        [791, 72, 121, 90],
+        [478, 110, 27, 61],
+        [479, 360, 22, 64],
+        [488, 20, 34, 18],
+        [902, 0, 57, 80],
+        [768, 12, 19, 13],
+        ],
 "item_assets": {
     "water_bottle": "assets/water_bottle.png",
     "cardboard_box": "assets/cardboard_box.png",
-    "battery": "assets/battery.png",
+    "batteries": "assets/batteries.png",
     "electronics": "assets/electronics.png",
     "food_waste": "assets/food_waste.png",
     "trash": "assets/trash.png",
     "chip_bag": "assets/chip_bag.png",
 },
 "item_sizes": {
-    "water_bottle": (52, 52),
-    "cardboard_box": (64, 64),
-    "battery": (52, 52),
-    "electronics": (60, 60),
-    "food_waste": (60, 60),
-    "trash": (60, 60),
-    "chip_bag": (56, 56),
+    "water_bottle": (40, 40),
+    "cardboard_box": (40, 40),
+    "batteries": (40, 40),
+    "electronics": (40, 40),
+    "food_waste": (40, 40),
+    "trash": (40, 40),
+    "chip_bag": (40, 40),
 },
 "intro": {
     "title": "Level 2: City Recycling Run",
@@ -152,22 +212,6 @@ LEVELS: dict[int, dict] = {
     ],
     "dismiss": "Press ENTER to start",
 },
-
-
-        # Static city objects (buildings, fences, etc.)
-        # Each line points at one image in assets.
-        #   {"image": "assets/sprites/city_building_1.png", "rect": (x, y, w, h)}
-        # Rect sizes here are doubled for clearer visibility.
-        "static_objects": [
-            {"image": "assets/water_bottle.png", "rect": (240, 220, 240, 160)},
-            {"image": "assets/cardboard_box.png", "rect": (540, 160, 280, 200)},
-            {"image": "assets/battery.png", "rect": (840, 220, 200, 160)},
-            {"image": "assets/electronics.png", "rect": (1000, 280, 240, 200)},
-            {"image": "assets/food_waste.png", "rect": (1160, 340, 280, 240)},
-            {"image": "assets/trash.png", "rect": (1320, 400, 320, 280)},
-            {"image": "assets/chip_bag.png", "rect": (1480, 460, 360, 320)},
-        ],
-
         # Moving obstacles: traffic lanes with car sprites.
         #   {"image": "assets/sprites/car_red.png",
         #    "rect": (x,y,w,h), "vel": (vx,vy), "bounds": (minx, miny, maxx, maxy)}
@@ -182,19 +226,19 @@ LEVELS: dict[int, dict] = {
 "moving_objects": [
     # Middle vertical road car (up/down)
     {
-        "image": "assets/car.png",
+        "image": "assets/cars.png",
         "pickupable": False,
-        "rect": (SCREEN_W // 2 - 40, 40, 80, 40),
-        "vel": (0, 220),
-        "bounds": (SCREEN_W // 2 - 40, 40, SCREEN_W // 2 - 40, SCREEN_H - 120),
+        "rect": (SCREEN_W // 2 - 70, 0, 50, 50),
+        "vel": (0, 180),
+        "bounds": (SCREEN_W // 2 - 70, 40, SCREEN_W // 2 - 60, SCREEN_H - 120),
     },
     # Bottom road car (left/right)
     {
-        "image": "assets/car.png",
+        "image": "assets/carsrl.png",
         "pickupable": False,
-        "rect": (40, SCREEN_H - 80, 80, 40),
-        "vel": (260, 0),
-        "bounds": (40, SCREEN_H - 80, SCREEN_W - 120, SCREEN_H - 80),
+        "rect": (0, SCREEN_H - 60, 50, 50),
+        "vel": (190, 0),
+        "bounds": (0, SCREEN_H - 60, SCREEN_W - 120, SCREEN_H - 80),
     },
 ],
 
@@ -202,7 +246,7 @@ LEVELS: dict[int, dict] = {
             "pickup": {
                 "water_bottle": 3,     # recycling
                 "cardboard_box": 3,    # recycling
-                "battery": 5,          # hazardous
+                "batteries": 5,          # hazardous
                 "electronics": 5,      # hazardous
                 "food_waste": 2,       # organic
                 "trash": 3,            # general trash
@@ -229,26 +273,44 @@ LEVELS: dict[int, dict] = {
         "item_spawn": {
             "count": 32,
             "types": [
-                "plastic_bag",
+                "can",
+                "chip_bag",
+                "water_bottle",
                 "fishing_net",
                 "sunken_electronics",
                 "microplastic",
                 "oil_slick",
             ],
         },
+
+        "flow_areas": [
+        {
+        "rect": [0, 72, 960, 467],      # x, y, width, height (almost whole screen)
+        "speed": 40, 
+        "on_exit": "remove"                # disappear when completely outside this rect
+        }
+        ],
+        "max_items": 6,
+        "spawn_blocked_areas": [
+        [0, 0, 960, 72],   #air
+        ],
 "item_assets": {
-    "plastic_bag": "assets/plastic_bags.png",
+    "can": "assets/can.png",
+    "chip_bag": "assets/chip_bag.png",
+    "water_bottle": "assets/water_bottle.png",
     "fishing_net": "assets/fishing_net.png",
-    "sunken_electronics": "assets/sunken_electronics.png",
-    "microplastic": "assets/microplastic.png",
+    "sunken_electronics": "assets/electronics.png",
+    "microplastic": "assets/trash.png",
     "oil_slick": "assets/oil_slicks.png",
 },
 "item_sizes": {
-    "plastic_bag": (56, 56),
-    "fishing_net": (72, 72),
-    "sunken_electronics": (72, 72),
-    "microplastic": (44, 44),
-    "oil_slick": (72, 56),
+    "can": (35, 35),
+    "chip_bag": (35, 35),
+    "water_bottle": (35, 35),
+    "fishing_net": (45, 45),
+    "sunken_electronics": (35, 35),
+    "microplastic": (35, 35),
+    "oil_slick": (45, 45),
 },
 "intro": {
     "title": "Level 3: Ocean Rescue",
@@ -260,17 +322,6 @@ LEVELS: dict[int, dict] = {
     "dismiss": "Press ENTER to start",
 },
 
-
-        # Static obstacles (rocks, reef structures)
-        #   {"image": "assets/sprites/reef_rock.png", "rect": (x, y, w, h)}
-        # Rect sizes here are doubled for clearer visibility.
-        "static_objects": [
-            {"image": "assets/fishing_net.png", "rect": (520, 250, 320, 200)},
-            {"image": "assets/sunken_electronics.png", "rect": (780, 310, 360, 240)},
-            {"image": "assets/microplastic.png", "rect": (1040, 370, 400, 280)},
-            {"image": "assets/oil_slicks.png", "rect": (1300, 430, 440, 320)},
-        ],
-
         # Moving obstacles to represent currents of microplastics and drifting oil slicks.
         #   {"image": "assets/sprites/microplastics_band.png",
         #    "rect": (x,y,w,h), "vel": (vx,vy), "bounds": (minx, miny, maxx, maxy)}
@@ -280,21 +331,16 @@ LEVELS: dict[int, dict] = {
         #   - Mid-depth patch: starts at (300, 320), moves vertically between y=220 and y=440.
         # Rect sizes here are doubled for clearer visibility.
         "moving_objects": [
-            {
-                "image": "assets/plastic_bags.png",
-                "rect": (200, 140, 240, 60),
-                "vel": (150, 0),
-                "bounds": (160, 140, 760, 140),
-            },
+            
         ],
 
         "air_rules": {
             "pickup": {
-                "plastic_bag": 3,
-                "fishing_net": 5,
-                "sunken_electronics": 5,
-                "microplastic": 4,
-                "oil_slick": 6,
+                "can": 3,
+                "chip_bag": 2,
+                "water_bottle": 1, 
+                "sunken_electronics": 4,
+                "microplastic": 3,
             },
             "step_on": {
                 # Oil slicks and nets act as hazards when you stand on them.

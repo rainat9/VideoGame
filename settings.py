@@ -56,9 +56,9 @@ LAST_LEVEL = 3
 
 # Per-level air-quality threshold to advance
 LEVEL_TARGETS = {
-    1: 70,
-    2: 80,
-    3: 90,
+    1: 100,
+    2: 100,
+    3: 100,
 }
 
 # ----------------------------

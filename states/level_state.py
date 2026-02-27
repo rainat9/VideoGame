@@ -109,11 +109,21 @@ class StaticObject:
 
 
 class Item:
-    """Random-spawn collectible item with a kind, rect, and optional sprite."""
-    def __init__(self, kind: str, rect: pygame.Rect, image: pygame.Surface | None) -> None:
+    def __init__(self, kind: str, rect: pygame.Rect, image: pygame.Surface | None,
+                 spawn_time: float, lifetime: float,
+                 moving: bool = False, vx: float = 0, vy: float = 0,
+                 bounds: pygame.Rect | None = None,
+                 on_exit: str = "bounce"):          # new parameter
         self.kind = kind
         self.rect = rect
         self.image = image
+        self.spawn_time = spawn_time
+        self.lifetime = lifetime
+        self.moving = moving
+        self.vx = vx
+        self.vy = vy
+        self.bounds = bounds
+        self.on_exit = on_exit
 
 
 class MovingObstacle:
@@ -164,29 +174,28 @@ class LevelState(BaseState):
     # Default mapping from item kind -> asset path (adjust if your filenames differ).
     ITEM_ASSETS: dict[str, str] = {
         "leaf": "assets/leaves.png",
-        "plastic_bag": "assets/plastic_bag.png",
+        "can": "assets/can.png",
         "water_bottle": "assets/water_bottle.png",
         "electronics": "assets/electronics.png",
         "chemical": "assets/chemical_container.png",
         "cardboard_box": "assets/cardboard_box.png",
-        "battery": "assets/battery.png",
+        "batteries": "assets/batteries.png",
         "food_waste": "assets/food_waste.png",
         "trash": "assets/trash.png",
         "chip_bag": "assets/chip_bag.png",
         "fishing_net": "assets/fishing_net.png",
         "sunken_electronics": "assets/electronics.png",
-        "microplastic": "assets/plastic_bag.png",
+        "microplastic": "assets/trash.png",
         "oil_slick": "assets/oil_slicks.png",
     }
 
     # Bigger by default, but still reasonable for a 960x540 screen.
     DEFAULT_ITEM_SIZE = (84, 84)
-
     def __init__(self, level_id: int) -> None:
         self.level_id = level_id
         self.cfg = LEVELS[level_id]
         self._next: BaseState | None = None
-
+        
         # Background (static map image)
         self.bg = load_image(self.cfg["map_path"], scale_to=(SCREEN_W, SCREEN_H))
 
@@ -210,6 +219,37 @@ class LevelState(BaseState):
         self.air = AIR_START
         self.target_air = int(self.cfg["target_air"])
 
+        # Load collision rectangles (player cannot enter)
+        self.collision_rects = []
+        for rect_data in self.cfg.get("player_collision", []):
+            self.collision_rects.append(pygame.Rect(*rect_data))
+
+         # Max items on screen at once (default 5, can be set per level later)
+        self.max_items = self.cfg.get("max_items", 5)
+
+        # Spawn timer (seconds)
+        self.spawn_interval = 2.0          # spawn a new item every 2 seconds
+        self.spawn_timer = random.uniform(0, self.spawn_interval)  # random start
+
+        # Blocked areas for spawning (from level data)
+        self.spawn_blocked = []
+        for rect_data in self.cfg.get("spawn_blocked_areas", []):
+            self.spawn_blocked.append(pygame.Rect(*rect_data))
+
+         # --- NEW: load flow areas (for drifting items) ---
+        self.flow_areas = []
+        for fa in self.cfg.get("flow_areas", []):
+            area = {
+                "rect": pygame.Rect(*fa["rect"]),
+                "on_exit": fa.get("on_exit", "bounce")
+            }
+            if "vel" in fa:
+                area["vel"] = fa["vel"]          # fixed (vx, vy)
+            if "speed" in fa:
+                area["speed"] = fa["speed"]      # constant horizontal speed, random direction
+            self.flow_areas.append(area)
+
+        
         self.fog_surface = pygame.Surface((SCREEN_W, SCREEN_H))
         self.fog_surface.fill((0, 0, 0))
         self.fog_alpha = 0
@@ -234,11 +274,10 @@ class LevelState(BaseState):
 
         # Car collision penalty cooldown (prevents draining every frame)
         self._car_hit_cooldown = 0.0
-
+        
     # ---------- world loading ----------
 
     def _load_world_objects(self) -> None:
-        # Make static/moving items more apparent (bigger) without changing player size.
         # Only affects non-car moving objects and all static objects.
         static_scale = float(self.cfg.get("static_scale", 1.25))
         moving_scale = float(self.cfg.get("moving_scale", 1.25))
@@ -286,41 +325,66 @@ class LevelState(BaseState):
             return None
 
     def _spawn_items(self) -> None:
-        spawn_cfg = self.cfg.get("item_spawn", {})
-        base_count = int(spawn_cfg.get("count", 0))
+        self.items = []
+        for _ in range(self.max_items):
+            self._spawn_one_item()
 
-        # Ensure all items mentioned in comments/rules actually have a chance to spawn:
-        # Merge types list with pickup keys + hazards keys.
-        kinds = list(spawn_cfg.get("types", []))
+    def _spawn_one_item(self) -> None:
+    # Gather all possible kinds from level config and rules
+        kinds = list(self.cfg.get("item_spawn", {}).get("types", []))
         for k in list(self.air_pickup.keys()) + list(self.air_step_on.keys()):
             if k not in kinds:
                 kinds.append(k)
+        if not kinds:
+            return
 
-        # Ensure it's feasible to reach target_air from AIR_START.
-        # Conservative: use max pickup value available, and add a buffer.
-        need = max(0, self.target_air - AIR_START)
-        max_pick = max([int(v) for v in self.air_pickup.values()], default=3)
-        min_needed = 0
-        if max_pick > 0:
-            min_needed = int(math.ceil(need / max_pick)) + 3  # + buffer
-        count = max(base_count, min_needed, 10)  # never fewer than 10 collectibles
+        kind = random.choice(kinds)
+        w, h = self._item_size_for_kind(kind)
 
+        # Occupied rectangles: static objects + player + existing items
         blocked = [o.rect.copy() for o in self.static_objects]
         blocked.append(self.player.rect.copy())
+        blocked.extend(it.rect for it in self.items)
 
-        # Spawn
-        for _ in range(count):
-            kind = random.choice(kinds) if kinds else "trash"
-            w, h = self._item_size_for_kind(kind)
-            rect = self._random_free_rect(blocked, w, h)
-            img = self._load_item_image(kind, (w, h))
-            self.items.append(Item(kind, rect, img))
-            blocked.append(rect)
+        rect = self._random_free_rect(blocked, w, h)
+        img = self._load_item_image(kind, (w, h))
+
+        if self.level_id == 3:
+            lifetime = 1e9   
+        else:
+            lifetime = random.uniform(8.0, 15.0)
+
+        # Determine if this item should flow
+        moving = False
+        
+        vx = vy = 0
+        bounds = None
+        on_exit = "bounce"
+        for fa in self.flow_areas:
+            if rect.colliderect(fa["rect"]):
+                moving = True
+                bounds = fa["rect"]
+                on_exit = fa["on_exit"]
+                if "vel" in fa:
+                    vx, vy = fa["vel"]
+                elif "speed" in fa:
+                    # constant speed, random horizontal direction
+                    direction = random.choice([-1, 1])
+                    vx = fa["speed"] * direction
+                    vy = 0
+                else:
+                    # fallback – no movement
+                    vx = vy = 0
+                break
+
+        self.items.append(Item(kind, rect, img, self.t, lifetime,
+                               moving=moving, vx=vx, vy=vy, bounds=bounds,
+                               on_exit=on_exit))  
 
     def _random_free_rect(self, blocked: list[pygame.Rect], w: int, h: int) -> pygame.Rect:
         # Keep away from edges so items are visible
         margin_x = 24
-        margin_y = 64
+        margin_y = 10
         max_x = max(margin_x, SCREEN_W - margin_x - w)
         max_y = max(margin_y, SCREEN_H - margin_y - h)
 
@@ -329,6 +393,8 @@ class LevelState(BaseState):
             y = random.randint(margin_y, max_y)
             r = pygame.Rect(x, y, w, h)
             if any(r.colliderect(b) for b in blocked):
+                continue
+            if any(r.colliderect(area) for area in self.spawn_blocked):
                 continue
             return r
         # fallback
@@ -363,23 +429,13 @@ class LevelState(BaseState):
         return ("car" not in image_path.lower())
 
     def _try_pickup(self) -> None:
-        # Random items
+        # Only check random items (self.items)
         for i, it in enumerate(self.items):
             if self.player.rect.colliderect(it.rect):
                 gain = int(self.air_pickup.get(it.kind, 1))
                 self.air += gain
                 self.air = clamp(self.air, AIR_MIN, AIR_MAX)
                 self.items.pop(i)
-                return
-
-        # Static objects: treat as collectible ONLY if their asset name matches a known pickup/hazard keyword
-        for i, obj in enumerate(self.static_objects):
-            if self.player.rect.colliderect(obj.rect):
-                delta = self._delta_for_asset_path(obj.image_path)
-                if delta != 0:
-                    self.air += delta
-                    self.air = clamp(self.air, AIR_MIN, AIR_MAX)
-                    self.static_objects.pop(i)
                 return
 
         # Moving objects: collectible if not a car
@@ -403,15 +459,13 @@ class LevelState(BaseState):
         p = image_path.lower()
 
         # Hazards
-        if "chemical" in p or "oil" in p or "battery" in p or "net" in p:
+        if "chemical" in p or "oil" in p or "batteries" in p or "net" in p:
             return -abs(int(self.air_step_on.get("chemical", -8)))  # negative
 
         # Cars not collectible
         if "car" in p:
             return 0
 
-        # Otherwise: positive "cleanup" value
-        # Use a medium positive value so collecting visible objects helps a lot.
         return 6
 
     # ---------- update/draw ----------
@@ -423,7 +477,14 @@ class LevelState(BaseState):
             return
 
         keys = pygame.key.get_pressed()
+        old_rect = self.player.rect.copy()
         self.player.update(dt, keys)
+
+        # --- NEW: collision with solid objects ---
+        for rect in self.collision_rects:
+            if self.player.rect.colliderect(rect):
+                self.player.rect = old_rect
+                break
 
         # Update moving obstacles
         for mo in self.moving_obstacles:
@@ -445,8 +506,55 @@ class LevelState(BaseState):
                     self.air -= 6
                     self._car_hit_cooldown = 0.6
                     break
+        # Move flowing items – bounce or remove on exit
+        new_items = []
+        for it in self.items:
+            if it.moving and it.bounds is not None:
+                it.rect.x += it.vx * dt
+                it.rect.y += it.vy * dt
+
+                if it.on_exit == "bounce":
+                    # Bounce inside bounds
+                    if it.rect.left < it.bounds.left:
+                        it.rect.left = it.bounds.left
+                        it.vx = -it.vx
+                    if it.rect.right > it.bounds.right:
+                        it.rect.right = it.bounds.right
+                        it.vx = -it.vx
+                    if it.rect.top < it.bounds.top:
+                        it.rect.top = it.bounds.top
+                        it.vy = -it.vy
+                    if it.rect.bottom > it.bounds.bottom:
+                        it.rect.bottom = it.bounds.bottom
+                        it.vy = -it.vy
+                    new_items.append(it)
+
+                elif it.on_exit == "remove":
+                    # If completely outside bounds, discard
+                    if (it.rect.right < it.bounds.left or
+                        it.rect.left > it.bounds.right or
+                        it.rect.bottom < it.bounds.top or
+                        it.rect.top > it.bounds.bottom):
+                        continue          # skip → item disappears
+                    new_items.append(it)
+
+            else:
+                # Non‑moving items are always kept
+                new_items.append(it)
+
+        self.items = new_items
+
+        if not self.level_intro_active:
+            self.spawn_timer -= dt
+            while self.spawn_timer <= 0 and len(self.items) < self.max_items:
+                self.spawn_timer += self.spawn_interval
+                self._spawn_one_item()
 
         self.air = clamp(self.air, AIR_MIN, AIR_MAX)
+
+        # Remove items that have expired
+        current_time = self.t
+        self.items = [it for it in self.items if current_time - it.spawn_time < it.lifetime]
 
         # Fog: low air => higher alpha
         self.fog_alpha = int(FOG_MAX_ALPHA - (self.air / AIR_MAX) * (FOG_MAX_ALPHA - FOG_MIN_ALPHA))
