@@ -1,4 +1,4 @@
-# states/title_state.py
+
 from __future__ import annotations
 
 import pygame
@@ -46,7 +46,7 @@ class TitleState(BaseState):
         if self.bg:
             screen.blit(self.bg, (0, 0))
         else:
-            screen.fill((10, 10, 20))  # fallback background
+            screen.fill((10, 10, 20)) 
 
     def next_state(self) -> BaseState | None:
         return self._next
