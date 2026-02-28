@@ -1,0 +1,5 @@
+
+# pygbag outputs (don’t commit)
+build/
+docs/*
+!docs/README.md
