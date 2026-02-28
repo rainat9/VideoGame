@@ -19,7 +19,6 @@ async def main() -> None:
     running = True
 
     while running:
-        # Pump events first (important for browser responsiveness)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -29,7 +28,6 @@ async def main() -> None:
         if not running:
             break
 
-        # Limit FPS and compute dt
         dt = clock.tick(FPS) / 1000.0
 
         state.update(dt)
@@ -41,7 +39,6 @@ async def main() -> None:
         state.draw(screen)
         pygame.display.flip()
 
-        # ✅ KEY: yield to the browser so the page stays responsive
         await asyncio.sleep(0)
 
     pygame.quit()
