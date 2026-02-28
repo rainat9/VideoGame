@@ -41,17 +41,5 @@ class EndState(BaseState):
         else:
             screen.fill((8, 18, 10))
 
-        # msg = self.font_big.render("AIR QUALITY RESTORED!", True, (235, 235, 235))
-        # screen.blit(msg, msg.get_rect(center=(SCREEN_W // 2, 140)))
-
-        # sub = self.font_med.render("You cleaned every area of the town.", True, (220, 220, 220))
-        # screen.blit(sub, sub.get_rect(center=(SCREEN_W // 2, 190)))
-
-        # hint1 = self.font_med.render("Press R to play again", True, (255, 255, 140))
-        # screen.blit(hint1, hint1.get_rect(center=(SCREEN_W // 2, SCREEN_H - 90)))
-
-        # hint2 = self.font_med.render("Press ESC to quit", True, (190, 190, 190))
-        # screen.blit(hint2, hint2.get_rect(center=(SCREEN_W // 2, SCREEN_H - 60)))
-
     def next_state(self) -> BaseState | None:
         return self._next
