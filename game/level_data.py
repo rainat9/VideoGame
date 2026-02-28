@@ -3,9 +3,6 @@ from __future__ import annotations
 
 from settings import LEVEL_MAPS, LEVEL_TARGETS, SCREEN_W, SCREEN_H
 
-# ---------------------------------------------------------------------------
-# Level configs: spawn, target air, item spawn, flow areas, collision, scoring.
-# ---------------------------------------------------------------------------
 
 LEVELS: dict[int, dict] = {
     # ========== LEVEL 1: FOREST ==========
