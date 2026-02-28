@@ -315,9 +315,8 @@ class LevelState(BaseState):
         return self.DEFAULT_ITEM_SIZE
 
     def _load_item_image(self, kind: str, size: tuple[int, int]) -> pygame.Surface | None:
-        path = self.ITEM_ASSETS.get(kind)
+        path = self.cfg.get("item_assets", {}).get(kind) or self.ITEM_ASSETS.get(kind)
         if not path:
-            # try a simple fallback
             path = f"assets/{kind}.png"
         try:
             return load_image(path, scale_to=size)
@@ -432,7 +431,7 @@ class LevelState(BaseState):
         # Only check random items (self.items)
         for i, it in enumerate(self.items):
             if self.player.rect.colliderect(it.rect):
-                gain = int(self.air_pickup.get(it.kind, 1))
+                gain = int(self.air_pickup.get(it.kind, 0))
                 self.air += gain
                 self.air = clamp(self.air, AIR_MIN, AIR_MAX)
                 self.items.pop(i)

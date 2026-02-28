@@ -64,9 +64,9 @@ LEVEL_TARGETS = {
 # ----------------------------
 # Asset filenames (initial framework)
 # ----------------------------
-# You can change these names later as long as you keep paths consistent.
-TITLE_BG = f"{MAPS_DIR}/title_screen.png"   # optional
-END_BG = f"{MAPS_DIR}/end_screen.png"       # optional
+# Start screen and end/success screen backgrounds.
+TITLE_BG = f"{ASSETS_DIR}/start.png"
+END_BG = f"{ASSETS_DIR}/end.png"
 
 LEVEL_MAPS = {
     1: f"{MAPS_DIR}/level1_forest.png",
@@ -74,10 +74,11 @@ LEVEL_MAPS = {
     3: f"{MAPS_DIR}/level3_ocean.png",
 }
 
+# Character sprite (start/level/end screens use this for the player)
 PLAYER_SPRITES = {
-    "idle": f"{SPRITES_DIR}/player_idle.png",
-    "walk1": f"{SPRITES_DIR}/player_walk_1.png",  # optional
-    "walk2": f"{SPRITES_DIR}/player_walk_2.png",  # optional
+    "idle": f"{ASSETS_DIR}/person.png",
+    "walk1": f"{ASSETS_DIR}/person.png",
+    "walk2": f"{ASSETS_DIR}/person.png",
 }
 
 # Example item sprite names (optional; you can hook these up later)
